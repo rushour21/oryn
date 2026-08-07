@@ -82,7 +82,7 @@ export function Hero() {
 
             <div data-hero className="mt-16 flex flex-wrap justify-center gap-3 2xl:mt-20">
               <Button asChild size="lg" className="rounded-full px-7">
-                <Link to="/dashboard">
+                <Link to="/signup">
                   Get started <ArrowRight className="size-4" />
                 </Link>
               </Button>

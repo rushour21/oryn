@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+import { useTheme } from '@/lib/theme'
 import { useLenisScroll, useReveal } from '@/hooks/useScrollAnimations'
 import { Hero } from '@/components/landing/Hero'
 import { LogoGrid } from '@/components/landing/LogoGrid'
@@ -14,6 +16,18 @@ import { CommandCTA } from '@/components/landing/CommandCTA'
 import { Footer } from '@/components/landing/Footer'
 
 export default function Landing() {
+  const { theme, setTheme } = useTheme()
+  const prevTheme = useRef(theme)
+
+  // Landing is designed dark-only. Force dark while here and restore
+  // the user's actual preference when they navigate away.
+  useEffect(() => {
+    prevTheme.current = theme
+    setTheme('dark')
+    return () => setTheme(prevTheme.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useLenisScroll()
   const scope = useReveal()
 

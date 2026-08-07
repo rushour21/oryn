@@ -47,26 +47,26 @@ export default function Videos() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by title…"
-            className="pl-9"
+            placeholder="Search videos…"
+            className="rounded-full pl-9"
           />
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+        <div className="flex items-center gap-0.5 rounded-full border border-[var(--glass-border)] bg-[color-mix(in_oklab,var(--foreground)_3%,transparent)] p-1">
           {FILTERS.map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setFilter(f)}
               className={cn(
-                'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                'rounded-full px-3.5 py-1.5 text-xs font-medium transition-all',
                 filter === f
-                  ? 'bg-secondary text-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-[color-mix(in_oklab,var(--foreground)_6%,transparent)] hover:text-foreground',
               )}
             >
               {f}
@@ -74,7 +74,7 @@ export default function Videos() {
           ))}
         </div>
 
-        <Button variant="outline" size="icon" aria-label="More filters">
+        <Button variant="outline" size="icon" className="rounded-full shrink-0" aria-label="More filters">
           <SlidersHorizontal className="size-4" />
         </Button>
       </div>
@@ -117,8 +117,17 @@ export default function Videos() {
                       to={`/dashboard/videos/${v.id}`}
                       className="flex items-center gap-3 group"
                     >
-                      <span className="grid h-10 w-[72px] shrink-0 place-items-center overflow-hidden rounded-md border border-[var(--glass-border)] bg-[color-mix(in_oklab,var(--foreground)_5%,transparent)]">
-                        <Film className="size-4 text-muted-foreground" />
+                      <span className={cn(
+                        'grid h-10 w-[72px] shrink-0 place-items-center overflow-hidden rounded-[10px] border font-mono text-[9px] font-semibold transition-colors',
+                        v.status === 'ready'
+                          ? 'border-primary/20 bg-primary/8 text-primary'
+                          : v.status === 'processing'
+                          ? 'border-warning/20 bg-warning/8 text-warning'
+                          : v.status === 'failed'
+                          ? 'border-destructive/20 bg-destructive/8 text-destructive'
+                          : 'border-[var(--glass-border)] bg-[color-mix(in_oklab,var(--foreground)_5%,transparent)] text-muted-foreground',
+                      )}>
+                        {v.renditions.at(-1) ?? <Film className="size-3.5 opacity-40" />}
                       </span>
                       <span className="min-w-0">
                         <span className="line-clamp-1 font-medium transition-colors group-hover:text-primary">

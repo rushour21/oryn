@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Menu, X, ArrowRight } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 
 const LINKS = [
@@ -53,8 +52,6 @@ export function Navbar() {
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <ThemeToggle className="size-9 rounded-full border-0 text-white/70 hover:bg-white/10 hover:text-white" />
-
           <Button
             asChild
             size="sm"

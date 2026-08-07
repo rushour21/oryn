@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { NavLink, Outlet, Link } from 'react-router'
+import { NavLink, Outlet, Link, useLocation, useMatch, useNavigate } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   LayoutDashboard,
   Video,
@@ -9,10 +10,14 @@ import {
   Menu,
   X,
   LogOut,
+  ExternalLink,
   CreditCard,
   Command,
   ChevronsUpDown,
+  ChevronRight,
+  Bell,
   Sparkles,
+  Plus,
 } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -27,7 +32,20 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Mesh, Glass } from '@/components/dashboard/glass'
+import { authApi } from '@/lib/api/auth'
+import { useAuthStore } from '@/stores/auth'
 import { cn } from '@/lib/utils'
+
+/** "Rushabh Ingle" → "RI"; falls back to the first letter for single names. */
+function initials(name) {
+  if (!name) return '·'
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+}
 
 const NAV = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -38,6 +56,8 @@ const NAV = [
 ]
 
 function Rail({ onNavigate }) {
+  const org = useAuthStore((s) => s.activeOrg)
+
   return (
     <>
       {/* org switcher */}
@@ -46,12 +66,14 @@ function Rail({ onNavigate }) {
         className="mx-3 mt-3 flex items-center gap-3 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--foreground)_6%,transparent)]"
       >
         <span className="grid size-9 shrink-0 place-items-center rounded-[12px] grad-bg font-display text-sm font-bold text-[#04140f]">
-          M
+          {org?.name?.[0]?.toUpperCase() ?? '·'}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold">My Academy</span>
-          <span className="block font-mono text-[10px] text-muted-foreground">
-            Pro · Live
+          <span className="block truncate text-sm font-semibold">
+            {org?.name ?? 'Your academy'}
+          </span>
+          <span className="block font-mono text-[10px] capitalize text-muted-foreground">
+            {org ? `${org.plan} · ${org.role}` : '—'}
           </span>
         </span>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
@@ -59,7 +81,7 @@ function Rail({ onNavigate }) {
 
       <div className="mx-5 my-3 h-px bg-[var(--glass-border)]" />
 
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="flex-1 space-y-0.5 px-3">
         {NAV.map((item) => (
           <NavLink
             key={item.to}
@@ -78,7 +100,7 @@ function Rail({ onNavigate }) {
             {({ isActive }) => (
               <>
                 {isActive && (
-                  <span className="absolute inset-0 rounded-[16px] grad-bg opacity-[0.16]" />
+                  <span className="absolute inset-0 rounded-[16px] grad-bg opacity-[0.14]" />
                 )}
                 {isActive && (
                   <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full grad-bg" />
@@ -95,6 +117,22 @@ function Rail({ onNavigate }) {
           </NavLink>
         ))}
       </nav>
+
+      {/* upload CTA */}
+      <div className="px-3 py-3">
+        <Button
+          asChild
+          size="sm"
+          className="w-full rounded-full gap-1.5"
+        >
+          <Link to="/dashboard/upload" onClick={onNavigate}>
+            <Plus className="size-3.5" />
+            Upload video
+          </Link>
+        </Button>
+      </div>
+
+      <div className="mx-5 h-px bg-[var(--glass-border)]" />
 
       {/* phase 2 teaser */}
       <div className="p-3">
@@ -123,15 +161,42 @@ function Rail({ onNavigate }) {
   )
 }
 
+const TITLES = {
+  '/dashboard': 'Overview',
+  '/dashboard/videos': 'Library',
+  '/dashboard/upload': 'Upload',
+  '/dashboard/usage': 'Usage',
+  '/dashboard/settings': 'Settings',
+}
+
 export default function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const user = useAuthStore((s) => s.user)
+  const clearSession = useAuthStore((s) => s.clearSession)
+
+  async function handleLogout() {
+    // Revoke server-side first, but sign out locally either way — a network
+    // failure must not strand the user in a session they asked to leave.
+    try {
+      await authApi.logout()
+    } finally {
+      clearSession()
+      queryClient.clear() // drop every cached response from the old session
+      navigate('/login', { replace: true })
+    }
+  }
+  const { pathname } = useLocation()
+  const onVideo = useMatch('/dashboard/videos/:id')
+  const title = onVideo ? 'Video' : (TITLES[pathname] ?? 'Overview')
 
   return (
     <div className="relative min-h-screen">
       <Mesh />
 
       {/* floating rail — detached from the viewport edge */}
-      <Glass className="fixed inset-y-4 left-4 z-40 hidden w-[252px] flex-col rounded-[28px] lg:flex">
+      <Glass className="fixed inset-y-5 left-5 z-40 hidden w-[248px] flex-col rounded-[28px] lg:flex">
         <div className="relative flex h-full flex-col">
           <Link
             to="/"
@@ -168,10 +233,10 @@ export default function DashboardLayout() {
         </>
       )}
 
-      <div className="lg:pl-[276px]">
+      <div className="lg:pl-[292px]">
         {/* floating pill toolbar */}
-        <div className="sticky top-4 z-30 px-4 pt-4 lg:pr-4 lg:pl-0">
-          <div className="glass-pill flex h-14 items-center gap-2 rounded-full px-2.5 sm:px-4">
+        <header className="sticky top-5 z-30 px-4 pt-5 lg:pl-0 lg:pr-5">
+          <div className="glass-pill flex h-14 items-center gap-2 rounded-full pl-3 pr-2 sm:pl-5 sm:pr-3">
             <button
               type="button"
               onClick={() => setMobileOpen((v) => !v)}
@@ -181,41 +246,58 @@ export default function DashboardLayout() {
               {mobileOpen ? <X className="size-4" /> : <Menu className="size-4" />}
             </button>
 
-            <div className="relative hidden max-w-md flex-1 items-center sm:flex">
-              <Search className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
-              <input
-                placeholder="Search videos, transcripts…"
-                className="h-9 w-full rounded-full bg-transparent pl-9 pr-16 text-sm outline-none placeholder:text-muted-foreground/70"
-              />
-              <kbd className="pointer-events-none absolute right-2 hidden items-center gap-0.5 rounded-md border border-[var(--glass-border)] px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground md:flex">
-                <Command className="size-2.5" />K
-              </kbd>
+            {/* where you are */}
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="hidden font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground/70 lg:inline">
+                My Academy
+              </span>
+              <ChevronRight className="hidden size-3.5 shrink-0 text-muted-foreground/40 lg:inline" />
+              <span className="truncate text-sm font-semibold">{title}</span>
             </div>
 
-            <div className="ml-auto flex items-center gap-1.5">
-              <div className="hidden items-center rounded-full border border-[var(--glass-border)] p-0.5 sm:flex">
-                <span className="rounded-full grad-bg px-3 py-1 font-mono text-[10px] font-semibold text-[#04140f]">
-                  LIVE
-                </span>
-                <span className="px-3 py-1 font-mono text-[10px] text-muted-foreground">
-                  TEST
-                </span>
-              </div>
+            <div className="ml-auto flex items-center gap-1">
+              {/* compact search trigger, not a wide input */}
+              <button
+                type="button"
+                className="hidden h-9 items-center gap-2 rounded-full border border-[var(--glass-border)] pl-3 pr-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:flex"
+              >
+                <Search className="size-3.5" />
+                <span className="hidden md:inline">Search</span>
+                <kbd className="ml-1 hidden items-center gap-0.5 rounded-full bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] px-2 py-0.5 font-mono text-[10px] md:flex">
+                  <Command className="size-2.5" />K
+                </kbd>
+              </button>
+
+              <div className="mx-1 hidden h-5 w-px bg-[var(--glass-border)] sm:block" />
+
+              <button
+                type="button"
+                aria-label="Notifications"
+                className="relative grid size-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)] hover:text-foreground"
+              >
+                <Bell className="size-4" />
+                <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary" />
+              </button>
 
               <ThemeToggle className="size-9 rounded-full border-0 hover:bg-[color-mix(in_oklab,var(--foreground)_7%,transparent)]" />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="outline-none">
+                  <button className="ml-1 outline-none">
                     <Avatar className="size-8 ring-1 ring-[var(--glass-border)]">
                       <AvatarFallback className="grad-bg text-[#04140f]">
-                        RI
+                        {initials(user?.name)}
                       </AvatarFallback>
                     </Avatar>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="rounded-2xl">
-                  <DropdownMenuLabel>rushabh@myacademy.com</DropdownMenuLabel>
+                  <DropdownMenuLabel className="leading-tight">
+                    <span className="block">{user?.name}</span>
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      {user?.email}
+                    </span>
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/settings">
@@ -224,16 +306,20 @@ export default function DashboardLayout() {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/">
-                      <LogOut /> Back to site
+                      <ExternalLink /> Back to site
                     </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={handleLogout}>
+                    <LogOut /> Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
-        </div>
+        </header>
 
-        <main className="px-4 py-6 lg:pl-0 lg:pr-4">
+        <main className="px-4 py-6 lg:pl-0 lg:pr-5">
           <Outlet />
         </main>
       </div>
