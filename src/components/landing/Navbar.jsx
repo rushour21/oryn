@@ -5,10 +5,10 @@ import { LogoMark } from '@/components/brand/Logo'
 import { Button } from '@/components/ui/button'
 
 const LINKS = [
-  { label: 'Platform', href: '#platform' },
+  { label: 'Product', href: '#product' },
   { label: 'Pipeline', href: '#pipeline' },
   { label: 'Ask AI', href: '#askai' },
-  { label: 'Roadmap', href: '#roadmap' },
+  { label: 'Developers', href: '#surfaces' },
   { label: 'Pricing', href: '#pricing' },
 ]
 
@@ -57,7 +57,7 @@ export function Navbar() {
             size="sm"
             className="ml-1 hidden rounded-full px-5 sm:inline-flex"
           >
-            <Link to="/dashboard">
+            <Link to="/signup">
               Start free <ArrowRight className="size-3.5" />
             </Link>
           </Button>
@@ -87,7 +87,7 @@ export function Navbar() {
             </a>
           ))}
           <Button asChild className="mt-2 w-full rounded-full">
-            <Link to="/dashboard">Start free</Link>
+            <Link to="/signup">Start free</Link>
           </Button>
         </div>
       )}

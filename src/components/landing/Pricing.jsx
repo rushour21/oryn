@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { DEV_PLATFORM_BLURB, DEV_PLATFORM_HREF } from '@/components/landing/status'
 
 const PLANS = [
   {
@@ -11,6 +12,7 @@ const PLANS = [
     period: 'forever',
     lede: 'Enough to ship a real course and see if this works for you.',
     cta: 'Start free',
+    to: '/signup',
     features: [
       '10 videos',
       '20 GB storage',
@@ -26,6 +28,7 @@ const PLANS = [
     period: 'per month',
     lede: 'For teachers and small academies running a paid catalogue.',
     cta: 'Start free trial',
+    to: '/signup',
     featured: true,
     features: [
       'Unlimited videos',
@@ -43,6 +46,11 @@ const PLANS = [
     period: 'per month',
     lede: 'For platforms integrating ORYN through the API and SDKs.',
     cta: 'Talk to us',
+    href: DEV_PLATFORM_HREF,
+    // Everything above the line is live today; the API items are not yet
+    // self-serve, so the card says so rather than letting someone pay for
+    // a key they cannot generate.
+    note: DEV_PLATFORM_BLURB,
     features: [
       'Everything in Pro',
       '2 TB storage',
@@ -107,10 +115,22 @@ export function Pricing() {
                   variant={p.featured ? 'default' : 'outline'}
                   className="mt-7 w-full"
                 >
-                  <Link to="/dashboard">
-                    {p.cta} <ArrowRight className="size-4" />
-                  </Link>
+                  {p.to ? (
+                    <Link to={p.to}>
+                      {p.cta} <ArrowRight className="size-4" />
+                    </Link>
+                  ) : (
+                    <a href={p.href}>
+                      {p.cta} <ArrowRight className="size-4" />
+                    </a>
+                  )}
                 </Button>
+
+                {p.note && (
+                  <p className="mt-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                    {p.note}
+                  </p>
+                )}
 
                 <ul className="mt-8 space-y-3 border-t border-border-soft pt-7">
                   {p.features.map((f) => (

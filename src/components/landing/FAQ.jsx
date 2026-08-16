@@ -16,11 +16,15 @@ const ITEMS = [
   },
   {
     q: 'Do I need a developer to use this?',
-    a: 'Not in Phase 1. You upload in the dashboard, copy an iframe, and paste it into WordPress, Webflow, Teachable or your own HTML. Phase 2 adds API keys and SDKs for teams who want to drive everything from their own code.',
+    a: 'No. You upload in the dashboard, copy an iframe, and paste it into WordPress, Webflow, Teachable, Kajabi or your own HTML — the same way you would embed a YouTube video. Teams who would rather drive everything from their own code can use the API and SDKs instead; both routes reach the same platform.',
   },
   {
     q: 'Can someone copy my embed code onto another site?',
-    a: 'You register the domains your videos may play on. We check the referring page server-side and also send a frame-ancestors policy so the browser itself refuses to render the player anywhere else. Phase 2 adds per-viewer signed tokens on top.',
+    a: 'You register the domains your videos may play on. We check the referring page server-side and also send a frame-ancestors policy so the browser itself refuses to render the player anywhere else. Accounts on the developer platform can go further and mint a playback token scoped to a single signed-in viewer.',
+  },
+  {
+    q: 'Can I move my existing course videos over?',
+    a: 'Yes. Upload them in bulk from the dashboard and each one goes through the same pipeline — you do not need to re-record or re-cut anything. Swapping your old embeds for ORYN ones is a find-and-replace on your site.',
   },
   {
     q: 'How long does processing take?',

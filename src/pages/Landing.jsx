@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useTheme } from '@/lib/theme'
 import { useLenisScroll, useReveal } from '@/hooks/useScrollAnimations'
 import { Hero } from '@/components/landing/Hero'
+import { DashboardPreview } from '@/components/landing/DashboardPreview'
 import { LogoGrid } from '@/components/landing/LogoGrid'
 import { Intro } from '@/components/landing/Intro'
 import { WordReveal } from '@/components/landing/WordReveal'
@@ -35,6 +36,7 @@ export default function Landing() {
     <div ref={scope} id="top" className="min-h-screen overflow-x-clip">
       <Hero />
       <main>
+        <DashboardPreview />
         <LogoGrid />
         <Intro />
         <WordReveal />

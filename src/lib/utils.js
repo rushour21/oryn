@@ -22,6 +22,17 @@ export function formatBytes(bytes) {
   return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
 }
 
+/** "Rushabh Ingle" → "RI"; falls back to "·" when there's no name yet. */
+export function initials(name) {
+  if (!name) return '·'
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+}
+
 export function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-IN', {
     day: 'numeric',

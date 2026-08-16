@@ -41,6 +41,20 @@ export const useAuthStore = create((set, get) => ({
   patchUser: (patch) =>
     set((s) => ({ user: s.user ? { ...s.user, ...patch } : s.user })),
 
+  /**
+   * Local patch after renaming the org (Settings → General).
+   *
+   * `activeOrg`/`orgs` are session identity, not a paginated resource, so they
+   * live here rather than in the query cache — same reasoning as `user` above.
+   * Settings' own org query stays the source of truth for the form; this just
+   * keeps the rail/header in sync without forcing a re-login to see the change.
+   */
+  patchActiveOrg: (patch) =>
+    set((s) => ({
+      activeOrg: s.activeOrg ? { ...s.activeOrg, ...patch } : s.activeOrg,
+      orgs: s.orgs.map((o) => (o.id === s.activeOrg?.id ? { ...o, ...patch } : o)),
+    })),
+
   isVerified: () => Boolean(get().user?.email_verified),
 }))
 

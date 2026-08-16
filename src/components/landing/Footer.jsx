@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { Check } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import { Button } from '@/components/ui/button'
+import { DEV_PLATFORM_HREF } from '@/components/landing/status'
 
 const COLUMNS = [
   {
@@ -17,19 +18,17 @@ const COLUMNS = [
   {
     title: 'Developers',
     links: [
-      { label: 'Quickstart', href: '#' },
-      { label: 'API reference', href: '#' },
-      { label: '@oryn/node', href: '#' },
-      { label: '@oryn/react', href: '#' },
+      { label: 'Embed a video', href: '#surfaces' },
+      { label: 'API and SDKs', href: '#surfaces' },
+      { label: 'Request API access', href: DEV_PLATFORM_HREF },
     ],
   },
   {
     title: 'Company',
     links: [
-      { label: 'Roadmap', href: '#roadmap' },
-      { label: 'Changelog', href: '#' },
-      { label: 'Status', href: '#' },
-      { label: 'Contact', href: '#' },
+      { label: 'Two ways in', href: '#surfaces' },
+      { label: 'Questions', href: '#faq' },
+      { label: 'Contact', href: 'mailto:hello@oryn.com' },
     ],
   },
 ]
@@ -126,8 +125,8 @@ export function Footer() {
             <a href="#" className="transition-colors hover:text-foreground">
               Terms
             </a>
-            <Link to="/dashboard" className="transition-colors hover:text-foreground">
-              Dashboard
+            <Link to="/login" className="transition-colors hover:text-foreground">
+              Sign in
             </Link>
           </div>
         </div>

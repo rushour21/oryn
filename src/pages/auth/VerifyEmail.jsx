@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
-import { MailCheck, CheckCircle2 } from 'lucide-react'
+import { MailCheck, CheckCircle2, FlaskConical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AuthShell, FormError } from '@/components/auth/AuthShell'
 import { authApi } from '@/lib/api/auth'
@@ -26,6 +26,18 @@ export default function VerifyEmail() {
   })
 
   const resend = useMutation({ mutationFn: authApi.resendVerification })
+
+  // Local dev only: SMTP isn't wired to a real inbox yet, so this skips the
+  // emailed link entirely. Gated on the Vite dev build so the button — and the
+  // authApi call it makes — never ship in a production bundle; the backend
+  // route is separately hard-gated on NODE_ENV, so this is belt and suspenders.
+  const devVerify = useMutation({
+    mutationFn: authApi.devBypassVerify,
+    onSuccess: () => {
+      patchUser({ email_verified: true })
+      navigate('/dashboard', { replace: true })
+    },
+  })
 
   // Auto-submit when arriving from the emailed link. The ref guards against
   // StrictMode's double effect burning the single-use token on the first render.
@@ -80,6 +92,7 @@ export default function VerifyEmail() {
                 <Link to="/login">Sign in to resend</Link>
               </Button>
             )}
+            {import.meta.env.DEV && isAuthed && <DevBypassButton mutation={devVerify} />}
           </div>
         )}
       </AuthShell>
@@ -127,7 +140,29 @@ export default function VerifyEmail() {
             {resend.isSuccess ? 'Email sent' : resend.isPending ? 'Sending…' : 'Resend email'}
           </Button>
         )}
+
+        {import.meta.env.DEV && isAuthed && <DevBypassButton mutation={devVerify} />}
       </div>
     </AuthShell>
+  )
+}
+
+/** Local-dev-only escape hatch — see the devVerify mutation above for why this exists. */
+function DevBypassButton({ mutation }) {
+  return (
+    <div className="space-y-2 border-t border-dashed border-[var(--glass-border)] pt-4">
+      <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <FlaskConical className="size-3" /> Dev only
+      </p>
+      {mutation.error && <FormError>{mutation.error.message}</FormError>}
+      <Button
+        variant="ghost"
+        className="w-full border border-dashed border-[var(--glass-border)] text-muted-foreground hover:text-foreground"
+        disabled={mutation.isPending}
+        onClick={() => mutation.mutate()}
+      >
+        {mutation.isPending ? 'Verifying…' : 'Skip email — verify instantly'}
+      </Button>
+    </div>
   )
 }

@@ -23,6 +23,9 @@ export const authApi = {
 
   resendVerification: () => api.post('/api/auth/verify-email/resend'),
 
+  /** Dev-only: skips the emailed link. Backend 404s this outside dev, so the button that calls it is import.meta.env.DEV-gated too — belt and suspenders. */
+  devBypassVerify: () => api.post('/api/auth/verify-email/dev-bypass'),
+
   forgotPassword: (email) =>
     api.post('/api/auth/forgot-password', { email }, { auth: false }),
 

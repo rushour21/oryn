@@ -1,6 +1,21 @@
 import { Badge } from '@/components/ui/badge'
-import { STATUS } from '@/data/mock'
 import { cn } from '@/lib/utils'
+
+/**
+ * Server-side video statuses.
+ *
+ * Defined here rather than imported from mock data so the component keeps
+ * working once the fixtures are gone. Covers every value the pipeline can
+ * write: created → uploading → uploaded → processing → ready | failed.
+ */
+const STATUS = {
+  created:    { label: 'Draft',      variant: 'outline' },
+  uploading:  { label: 'Uploading',  variant: 'default' },
+  uploaded:   { label: 'Queued',     variant: 'default' },
+  processing: { label: 'Processing', variant: 'warning' },
+  ready:      { label: 'Ready',      variant: 'success' },
+  failed:     { label: 'Failed',     variant: 'destructive' },
+}
 
 export function PageHeader({ title, description, action, className }) {
   return (
@@ -22,18 +37,19 @@ export function PageHeader({ title, description, action, className }) {
 }
 
 export function StatusPill({ status, progress }) {
-  const s = STATUS[status] ?? STATUS.ready
+  const s = STATUS[status] ?? { label: status ?? 'Unknown', variant: 'outline' }
+  const busy = status === 'processing' || status === 'uploading' || status === 'uploaded'
+
   return (
     <Badge variant={s.variant} className="gap-1.5">
       <span
         className={cn(
           'size-1.5 rounded-full bg-current',
-          (status === 'processing' || status === 'uploading') &&
-            'animate-[shimmer_1.6s_ease-in-out_infinite]',
+          busy && 'animate-[shimmer_1.6s_ease-in-out_infinite]',
         )}
       />
       {s.label}
-      {progress != null && status === 'processing' && ` ${progress}%`}
+      {progress != null && busy && ` ${progress}%`}
     </Badge>
   )
 }

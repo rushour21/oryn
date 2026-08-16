@@ -34,18 +34,7 @@ import {
 import { Mesh, Glass } from '@/components/dashboard/glass'
 import { authApi } from '@/lib/api/auth'
 import { useAuthStore } from '@/stores/auth'
-import { cn } from '@/lib/utils'
-
-/** "Rushabh Ingle" → "RI"; falls back to the first letter for single names. */
-function initials(name) {
-  if (!name) return '·'
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
-}
+import { cn, initials } from '@/lib/utils'
 
 const NAV = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, end: true },

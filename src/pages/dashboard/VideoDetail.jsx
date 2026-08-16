@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Play,
@@ -24,7 +25,14 @@ import {
   TabsTriggerUnderline,
 } from '@/components/ui/tabs'
 import { PageHeader, StatusPill } from '@/components/dashboard/shared'
-import { videos, pipelineSteps, transcriptChunks, domains } from '@/data/mock'
+import { VideoPlayer } from '@/components/dashboard/VideoPlayer'
+import { VideoProgress } from '@/components/dashboard/VideoProgress'
+import { AskAIPanel } from '@/components/dashboard/AskAIPanel'
+import { useVideoStatus } from '@/hooks/useVideoStatus'
+import { phaseForStatus } from '@/lib/video-progress'
+import { videosApi } from '@/lib/api/videos'
+import { orgApi } from '@/lib/api/org'
+import { pipelineSteps } from '@/data/mock'
 import { formatDuration, formatBytes, formatDate } from '@/lib/utils'
 
 const RENDITIONS = [
@@ -68,10 +76,56 @@ function CopyField({ value, label }) {
 
 export default function VideoDetail() {
   const { id } = useParams()
-  const video = videos.find((v) => v.id === id) ?? videos[0]
+  const { video } = useVideoStatus(id)
+  const queryClient = useQueryClient()
 
+  const { data: transcriptData, isLoading: transcriptLoading } = useQuery({
+    queryKey: ['transcript', id],
+    queryFn: () => videosApi.getTranscript(id),
+    enabled: video?.status === 'ready',
+    // A 404 here means "no transcript yet", not a transient failure — nothing
+    // to retry.
+    retry: false,
+  })
+  const transcript = transcriptData?.transcript ?? null
+
+  const [autoplay, setAutoplay] = useState(false)
+  const [loop, setLoop] = useState(false)
+  const [domainInput, setDomainInput] = useState('')
+
+  const { data: domainsData } = useQuery({
+    queryKey: ['org-domains'],
+    queryFn: () => orgApi.listDomains(),
+  })
+  const orgDomains = domainsData?.domains ?? []
+
+  const addDomain = useMutation({
+    mutationFn: (domain) => orgApi.addDomain(domain),
+    onSuccess: () => {
+      setDomainInput('')
+      queryClient.invalidateQueries({ queryKey: ['org-domains'] })
+    },
+  })
+  const removeDomain = useMutation({
+    mutationFn: (domainId) => orgApi.removeDomain(domainId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['org-domains'] }),
+  })
+
+  if (!video) {
+    return (
+      <div className="mx-auto max-w-6xl">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    )
+  }
+
+  const embedParams = new URLSearchParams({
+    ...(autoplay && { autoplay: '1' }),
+    ...(loop && { loop: '1' }),
+  }).toString()
+  const embedSrc = `${window.location.origin}/embed/${video.id}${embedParams ? `?${embedParams}` : ''}`
   const embedCode = `<iframe
-  src="https://embed.oryn.com/v/${video.id}"
+  src="${embedSrc}"
   width="100%" height="480" frameborder="0"
   allow="fullscreen; encrypted-media"
   allowfullscreen></iframe>`
@@ -89,8 +143,8 @@ export default function VideoDetail() {
         title={video.title}
         description={
           <span className="flex flex-wrap items-center gap-2 font-mono text-xs">
-            {video.id} · {formatDuration(video.duration)} ·{' '}
-            {formatBytes(video.size)} · {formatDate(video.createdAt)}
+            {video.id} · {formatDuration(video.duration_seconds)} ·{' '}
+            {formatBytes(video.size_bytes)} · {formatDate(video.created_at)}
           </span>
         }
         action={
@@ -111,6 +165,7 @@ export default function VideoDetail() {
           <TabsTriggerUnderline value="renditions">Qualities</TabsTriggerUnderline>
           <TabsTriggerUnderline value="pipeline">Processing</TabsTriggerUnderline>
           <TabsTriggerUnderline value="transcript">Transcript</TabsTriggerUnderline>
+          <TabsTriggerUnderline value="ask">Ask AI</TabsTriggerUnderline>
           <TabsTriggerUnderline value="embed">Embed</TabsTriggerUnderline>
         </TabsListUnderline>
 
@@ -119,12 +174,21 @@ export default function VideoDetail() {
           <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
             <Card className="overflow-hidden">
               <div className="relative aspect-video bg-gradient-to-br from-secondary to-background">
-                <div className="absolute inset-0 bg-grid opacity-50" />
-                <div className="absolute inset-0 grid place-items-center">
-                  <button className="grid size-16 place-items-center rounded-full grad-bg shadow-brand transition-transform hover:scale-105">
-                    <Play className="size-6 translate-x-0.5 fill-[#04140f] text-[#04140f]" />
-                  </button>
-                </div>
+                {video.status === 'ready' ? (
+                  <VideoPlayer videoId={id} />
+                ) : (
+                  <>
+                    <div className="absolute inset-0 bg-grid opacity-50" />
+                    <div className="absolute inset-0 grid place-items-center px-8">
+                      <VideoProgress
+                        className="w-full max-w-xs"
+                        phase={phaseForStatus(video.status)}
+                        serverProgress={video.progress}
+                        detail={video.status_detail}
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md border border-border bg-background/75 px-2 py-1 font-mono text-[10px] backdrop-blur">
                   <Lock className="size-3 text-primary" /> AES-128
                 </div>
@@ -136,13 +200,15 @@ export default function VideoDetail() {
               <dl className="space-y-3.5 text-sm">
                 {[
                   ['Status', <StatusPill key="s" status={video.status} />],
-                  ['Duration', formatDuration(video.duration)],
-                  ['Source size', formatBytes(video.size)],
-                  ['Source', '1920×1080 · h264 · 30fps'],
-                  ['Renditions', video.renditions.join(' · ') || '—'],
-                  ['Transcript', video.transcript ? 'Indexed · 41 chunks' : 'Pending'],
-                  ['Views', video.views.toLocaleString()],
-                  ['AI questions', video.questions.toLocaleString()],
+                  ['Duration', formatDuration(video.duration_seconds)],
+                  ['Source size', formatBytes(video.size_bytes)],
+                  [
+                    'Source',
+                    video.width && video.height
+                      ? `${video.width}×${video.height}${video.video_codec ? ` · ${video.video_codec}` : ''}`
+                      : 'Pending inspection',
+                  ],
+                  ['Uploaded', formatDate(video.created_at)],
                 ].map(([k, v]) => (
                   <div key={k} className="flex items-center justify-between gap-4">
                     <dt className="text-muted-foreground">{k}</dt>
@@ -156,7 +222,7 @@ export default function VideoDetail() {
                 <CopyField label="Video ID" value={video.id} />
                 <CopyField
                   label="Playback URL"
-                  value={`https://embed.oryn.com/v/${video.id}`}
+                  value={`${window.location.origin}/embed/${video.id}`}
                 />
               </div>
             </Card>
@@ -240,20 +306,33 @@ export default function VideoDetail() {
         <TabsContent value="transcript">
           <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
             <Card className="divide-y divide-[var(--glass-border)]">
-              {transcriptChunks.map((c) => (
-                <button
-                  key={c.id}
-                  className="flex w-full gap-4 p-4 text-left transition-colors hover:bg-accent/50"
-                >
-                  <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-primary/25 bg-primary/8 px-1.5 font-mono text-[11px] text-primary">
-                    <FastForward className="size-3" />
-                    {formatDuration(c.start)}
-                  </span>
-                  <span className="text-sm leading-relaxed text-muted-foreground">
-                    {c.text}
-                  </span>
-                </button>
-              ))}
+              {video.status !== 'ready' ? (
+                <p className="p-5 text-sm text-muted-foreground">
+                  Transcript will appear once processing finishes.
+                </p>
+              ) : transcriptLoading ? (
+                <p className="p-5 text-sm text-muted-foreground">Loading transcript…</p>
+              ) : !transcript ? (
+                <p className="p-5 text-sm text-muted-foreground">
+                  No transcript yet — it may still be transcribing, or this video has no
+                  spoken audio.
+                </p>
+              ) : (
+                transcript.chunks.map((c) => (
+                  <button
+                    key={c.id}
+                    className="flex w-full gap-4 p-4 text-left transition-colors hover:bg-accent/50"
+                  >
+                    <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-primary/25 bg-primary/8 px-1.5 font-mono text-[11px] text-primary">
+                      <FastForward className="size-3" />
+                      {formatDuration(c.start)}
+                    </span>
+                    <span className="text-sm leading-relaxed text-muted-foreground">
+                      {c.text}
+                    </span>
+                  </button>
+                ))
+              )}
             </Card>
 
             <div className="space-y-4">
@@ -261,11 +340,10 @@ export default function VideoDetail() {
                 <h3 className="mb-4 font-display text-sm font-semibold">Index</h3>
                 <dl className="space-y-3 text-sm">
                   {[
-                    ['Model', 'whisper-large-v3'],
-                    ['Language', 'English'],
-                    ['Words', '6,142'],
-                    ['Segments', '412'],
-                    ['Chunks', '41'],
+                    ['Model', transcript?.model ?? '—'],
+                    ['Language', transcript?.language ?? '—'],
+                    ['Segments', transcript?.segments?.length ?? '—'],
+                    ['Chunks', transcript?.chunks?.length ?? '—'],
                     ['Overlap', '15s'],
                   ].map(([k, v]) => (
                     <div key={k} className="flex justify-between">
@@ -290,10 +368,34 @@ export default function VideoDetail() {
           </div>
         </TabsContent>
 
+        {/* ---------- Ask AI ---------- */}
+        <TabsContent value="ask">
+          <AskAIPanel videoId={id} video={video} transcript={transcript} />
+        </TabsContent>
+
         {/* ---------- Embed ---------- */}
         <TabsContent value="embed">
           <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
             <div className="space-y-5">
+              <Card className="overflow-hidden p-0">
+                <div className="aspect-video bg-black">
+                  {video.status === 'ready' ? (
+                    <iframe
+                      key={embedSrc}
+                      src={embedSrc}
+                      title="Embed preview"
+                      className="size-full border-0"
+                      allow="fullscreen; encrypted-media; autoplay"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="grid size-full place-items-center p-6 text-center text-sm text-muted-foreground">
+                      Preview will work once this video finishes processing.
+                    </div>
+                  )}
+                </div>
+              </Card>
+
               <Card className="p-5">
                 <h3 className="mb-4 font-display text-base font-semibold">
                   Embed code
@@ -324,18 +426,23 @@ export default function VideoDetail() {
               <Card className="p-5">
                 <h3 className="mb-4 font-display text-sm font-semibold">Options</h3>
                 <div className="space-y-4">
-                  {[
-                    ['Autoplay (muted)', false],
-                    ['Show Ask AI drawer', true],
-                    ['Show quality selector', true],
-                    ['Loop', false],
-                  ].map(([label, on]) => (
-                    <div key={label} className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-muted-foreground">{label}</span>
-                      <Switch defaultChecked={on} />
-                    </div>
-                  ))}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">Autoplay (muted)</span>
+                    <Switch checked={autoplay} onCheckedChange={setAutoplay} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">Loop</span>
+                    <Switch checked={loop} onCheckedChange={setLoop} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 opacity-50">
+                    <span className="text-sm text-muted-foreground">Show Ask AI drawer</span>
+                    <Switch checked={false} disabled />
+                  </div>
                 </div>
+                <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+                  Ask AI inside the embedded player is coming soon — for now, viewers
+                  watch here and questions happen back in this dashboard.
+                </p>
               </Card>
 
               <Card className="p-5">
@@ -343,10 +450,10 @@ export default function VideoDetail() {
                   <h3 className="font-display text-sm font-semibold">
                     Allowed domains
                   </h3>
-                  <Badge variant="mono">{domains.length}</Badge>
+                  <Badge variant="mono">{orgDomains.length}</Badge>
                 </div>
                 <ul className="space-y-2">
-                  {domains.map((d) => (
+                  {orgDomains.map((d) => (
                     <li
                       key={d.id}
                       className="flex items-center justify-between gap-2 rounded-md border border-[var(--glass-border)] bg-[color-mix(in_oklab,var(--foreground)_5%,transparent)] px-2.5 py-1.5"
@@ -355,7 +462,10 @@ export default function VideoDetail() {
                         {d.domain}
                       </code>
                       <button
-                        className="text-muted-foreground transition-colors hover:text-destructive"
+                        type="button"
+                        onClick={() => removeDomain.mutate(d.id)}
+                        disabled={removeDomain.isPending}
+                        className="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
                         aria-label={`Remove ${d.domain}`}
                       >
                         <Trash2 className="size-3.5" />
@@ -363,15 +473,37 @@ export default function VideoDetail() {
                     </li>
                   ))}
                 </ul>
-                <div className="mt-3 flex gap-2">
-                  <Input placeholder="academy.com" className="h-9 text-xs" />
-                  <Button size="icon" variant="outline" aria-label="Add domain">
+                <form
+                  className="mt-3 flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    if (domainInput.trim()) addDomain.mutate(domainInput.trim())
+                  }}
+                >
+                  <Input
+                    placeholder="academy.com"
+                    className="h-9 text-xs"
+                    value={domainInput}
+                    onChange={(e) => setDomainInput(e.target.value)}
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    variant="outline"
+                    aria-label="Add domain"
+                    disabled={addDomain.isPending || !domainInput.trim()}
+                  >
                     <Plus className="size-4" />
                   </Button>
-                </div>
+                </form>
+                {addDomain.isError && (
+                  <p className="mt-2 text-[11px] text-destructive">
+                    {addDomain.error?.message ?? 'Could not add that domain.'}
+                  </p>
+                )}
                 <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                  Playback is blocked anywhere else, enforced by both a referer
-                  check and a frame-ancestors policy.
+                  Playback is blocked anywhere else, checked against the embedding
+                  page's referrer when it requests a viewing session.
                 </p>
               </Card>
             </div>

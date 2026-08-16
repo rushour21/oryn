@@ -1,3 +1,5 @@
+import { useId, useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function Input({ className, type = 'text', ...props }) {
@@ -15,6 +17,40 @@ function Input({ className, type = 'text', ...props }) {
       )}
       {...props}
     />
+  )
+}
+
+/**
+ * Password field with a reveal toggle.
+ *
+ * The toggle is `type="button"` inside a relatively-positioned wrapper rather
+ * than a sibling element, so it sits inline over the field without disturbing
+ * form layout or grabbing tab order ahead of the actual input.
+ */
+function PasswordInput({ className, id, ...props }) {
+  const [visible, setVisible] = useState(false)
+  const generatedId = useId()
+  const inputId = id ?? generatedId
+
+  return (
+    <div className="relative">
+      <Input
+        id={inputId}
+        type={visible ? 'text' : 'password'}
+        className={cn('pr-11', className)}
+        {...props}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-controls={inputId}
+        tabIndex={-1}
+        className="absolute inset-y-0 right-1 flex items-center px-2.5 text-muted-foreground/70 transition-colors hover:text-foreground"
+      >
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
   )
 }
 
@@ -46,4 +82,4 @@ function Label({ className, ...props }) {
   )
 }
 
-export { Input, Textarea, Label }
+export { Input, PasswordInput, Textarea, Label }

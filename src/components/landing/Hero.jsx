@@ -61,6 +61,18 @@ export function Hero() {
           <Navbar />
 
           <div className="flex flex-col items-center pb-40 pt-[5.5rem] text-center 2xl:pt-[7rem]">
+            {/* Who this is for, before what it is — a course seller should not
+                have to read the sub-headline to know the page is aimed at them. */}
+            <p
+              data-hero
+              className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/15
+                         bg-white/5 px-4 py-1.5 font-mono text-[11px] uppercase
+                         tracking-[0.14em] text-white/70"
+            >
+              <span className="size-1.5 animate-pulse-dot rounded-full bg-[var(--lime)]" />
+              For course sellers, academies and creators
+            </p>
+
             <h1
               data-hero
               className="max-w-4xl self-center px-4 text-5xl font-medium leading-[1.1]
@@ -75,9 +87,10 @@ export function Hero() {
               className="mt-6 max-w-2xl px-8 font-mono text-[0.8rem] font-light leading-[22px]
                          opacity-80 sm:text-sm sm:leading-[24px] lg:p-0"
             >
-              ORYN turns one upload into encrypted multi-bitrate streaming, a
-              time-coded transcript, and a chatbot that answers questions about
-              that exact video — with timestamps that seek the player.
+              Upload a lecture once. Get back a player that can&rsquo;t be
+              ripped, a transcript your students can search, and an AI tutor
+              that answers from that exact video — and seeks to the moment it
+              was said.
             </p>
 
             <div data-hero className="mt-16 flex flex-wrap justify-center gap-3 2xl:mt-20">
@@ -92,9 +105,16 @@ export function Hero() {
                 variant="outline"
                 className="rounded-full border-white/25 bg-white/5 px-7 text-white hover:bg-white/10"
               >
-                <a href="#pipeline">How it works</a>
+                <a href="#product">See the dashboard</a>
               </Button>
             </div>
+
+            <p
+              data-hero
+              className="mt-6 font-mono text-[11px] tracking-wide text-white/50"
+            >
+              Free plan, no card required · your videos export at any time
+            </p>
           </div>
         </div>
 

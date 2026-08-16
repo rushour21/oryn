@@ -51,10 +51,10 @@ export function Impact() {
             <div className="mt-9 flex gap-12 lg:justify-end">
               <div>
                 <p className="font-display text-2xl font-medium text-white">
-                  <Big value={0.6} decimals={2} prefix="$" />
+                  <Big value={4} />
                 </p>
                 <p className="mt-1 font-mono text-[11px] uppercase tracking-widest text-white/55">
-                  cost per video
+                  quality levels per video
                 </p>
               </div>
               <div>

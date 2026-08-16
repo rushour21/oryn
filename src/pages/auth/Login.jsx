@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Input, Label } from '@/components/ui/input'
+import { Input, PasswordInput, Label } from '@/components/ui/input'
 import { AuthShell, FormError, FieldError } from '@/components/auth/AuthShell'
 import { postAuthLanding, safeNext } from '@/lib/auth-nav'
 import { authApi, googleAuthUrl } from '@/lib/api/auth'
@@ -83,9 +83,8 @@ export default function Login() {
               Forgot?
             </Link>
           </div>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="current-password"
             required
             className="mt-1.5"

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Input, Label } from '@/components/ui/input'
+import { Input, PasswordInput, Label } from '@/components/ui/input'
 import { AuthShell, FormError, FieldError } from '@/components/auth/AuthShell'
 import { postAuthLanding } from '@/lib/auth-nav'
 import { authApi, googleAuthUrl } from '@/lib/api/auth'
@@ -93,9 +93,8 @@ export default function Signup() {
 
         <div>
           <Label htmlFor="password">Password</Label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="new-password"
             required
             minLength={8}

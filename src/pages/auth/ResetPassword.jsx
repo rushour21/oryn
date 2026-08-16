@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Input, Label } from '@/components/ui/input'
+import { PasswordInput, Label } from '@/components/ui/input'
 import { AuthShell, FormError, FieldError } from '@/components/auth/AuthShell'
 import { authApi } from '@/lib/api/auth'
 
@@ -61,9 +61,8 @@ export default function ResetPassword() {
 
         <div>
           <Label htmlFor="password">New password</Label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="new-password"
             required
             minLength={8}
@@ -79,9 +78,8 @@ export default function ResetPassword() {
 
         <div>
           <Label htmlFor="confirm">Confirm password</Label>
-          <Input
+          <PasswordInput
             id="confirm"
-            type="password"
             autoComplete="new-password"
             required
             className="mt-1.5"
