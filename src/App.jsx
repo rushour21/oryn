@@ -12,6 +12,7 @@ import ForgotPassword from '@/pages/auth/ForgotPassword'
 import ResetPassword from '@/pages/auth/ResetPassword'
 import OAuthCallback from '@/pages/auth/OAuthCallback'
 import Embed from '@/pages/Embed'
+import Watch from '@/pages/Watch'
 import DashboardLayout from '@/layouts/DashboardLayout'
 import DashboardHome from '@/pages/dashboard/Home'
 import Videos from '@/pages/dashboard/Videos'
@@ -47,6 +48,8 @@ export default function App() {
 
               {/* Public embed player (PRD F8) — no login, gated by a viewer token. */}
               <Route path="/embed/:videoId" element={<Embed />} />
+              {/* Public watch link (PRD F10) — no account, no embedding site. */}
+              <Route path="/w/:code" element={<Watch />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<DashboardLayout />}>
