@@ -68,19 +68,36 @@ async function fetchContentKey(videoId, token) {
  *   string from the manifest URL when the browser resolves them, so this has
  *   to happen per-request in the filter, not just once on the initial load.
  *
+ * Playback tokens are short-lived (5 minutes) and refreshed underneath a
+ * playing video, so the live token is held in a ref rather than read from the
+ * prop inside the effect. Putting `token` in the effect's dependencies would
+ * tear down and rebuild the player on every refresh — a visible stall every
+ * few minutes in the middle of a lecture. `onRefreshToken` is how embed mode
+ * asks for a fresh one; without it, an expiry is simply an error.
+ *
  * Exposes `{ seek(seconds) }` via ref — used by the embed page's chat drawer
  * to jump playback when a viewer clicks a cited timestamp.
  */
 export const VideoPlayer = forwardRef(function VideoPlayer(
-  { videoId, token, autoplay = false, muted = false, loop = false },
+  { videoId, token, onRefreshToken, autoplay = false, muted = false, loop = false },
   ref,
 ) {
   const videoRef = useRef(null)
   const playerRef = useRef(null)
+  const tokenRef = useRef(token)
+  const refreshRef = useRef(onRefreshToken)
   const [error, setError] = useState(null)
   const [qualities, setQualities] = useState([])
   const [selectedHeight, setSelectedHeight] = useState('auto') // 'auto' or a track height
   const [activeHeight, setActiveHeight] = useState(null) // height actually playing right now
+
+  useEffect(() => {
+    tokenRef.current = token
+  }, [token])
+
+  useEffect(() => {
+    refreshRef.current = onRefreshToken
+  }, [onRefreshToken])
 
   useImperativeHandle(ref, () => ({
     seek(seconds) {
@@ -107,15 +124,18 @@ export const VideoPlayer = forwardRef(function VideoPlayer(
   useEffect(() => {
     let player = null
     let cancelled = false
-    // The dashboard's access token is short-lived (15m) and nothing else keeps
-    // it fresh once a video is playing — useVideoStatus stops polling as soon
-    // as the video reaches 'ready'. Shaka's request filter re-reads the token
-    // on every retry, so recovering just means refreshing it once and asking
-    // Shaka to try again, mirroring the 401-retry the `api` client already
-    // does. Not applicable in embed/token mode — there's no session to
-    // refresh, so a stale token just surfaces as an error (30m TTL, no
-    // in-player refresh, is a deliberate scope cut for this pass).
-    let hasRetriedAuth = false
+    // Neither credential outlives a long lecture: the dashboard's access token
+    // is 15m and nothing keeps it fresh once playback starts (useVideoStatus
+    // stops polling at 'ready'), and a viewer token is 5m by design. Shaka's
+    // request filter re-reads the token on every retry, so recovery is just
+    // "get a fresh one, ask Shaka to try again".
+    //
+    // Guarded by a cooldown rather than a once-only flag: a 40-minute video
+    // legitimately needs eight or more refreshes, so latching after the first
+    // would strand the viewer 5 minutes in. The cooldown still prevents a
+    // failing endpoint from becoming a refresh loop.
+    const REFRESH_COOLDOWN_MS = 10_000
+    let lastAuthRecoveryAt = 0
 
     async function setup() {
       const shaka = (await import('shaka-player/dist/shaka-player.compiled.js')).default
@@ -133,8 +153,9 @@ export const VideoPlayer = forwardRef(function VideoPlayer(
       if (cancelled) return
 
       player.getNetworkingEngine().registerRequestFilter((_type, request) => {
-        if (token) {
-          request.uris = request.uris.map((uri) => withPlaybackToken(uri, token))
+        const viewerToken = tokenRef.current
+        if (viewerToken) {
+          request.uris = request.uris.map((uri) => withPlaybackToken(uri, viewerToken))
         } else {
           const accessToken = getAccessToken()
           if (accessToken) request.headers['Authorization'] = `Bearer ${accessToken}`
@@ -145,10 +166,23 @@ export const VideoPlayer = forwardRef(function VideoPlayer(
         return err?.code === shaka.util.Error.Code.BAD_HTTP_STATUS && err.data?.[1] === 401
       }
 
+      /**
+       * Gets playback moving again after a 401.
+       *
+       * Embed mode asks the page for a new viewer token; the dashboard
+       * refreshes its own session. Rate-limited by the cooldown above rather
+       * than capped, since a long video needs this repeatedly.
+       */
       async function recoverFromExpiredToken() {
-        if (token || hasRetriedAuth) return false // no session to refresh in embed mode
-        hasRetriedAuth = true
+        if (Date.now() - lastAuthRecoveryAt < REFRESH_COOLDOWN_MS) return false
+        lastAuthRecoveryAt = Date.now()
         try {
+          if (tokenRef.current) {
+            const fresh = await refreshRef.current?.()
+            if (!fresh) return false
+            tokenRef.current = fresh
+            return true
+          }
           await refreshSession()
           return true
         } catch {
@@ -178,7 +212,7 @@ export const VideoPlayer = forwardRef(function VideoPlayer(
           // baked-in key URI, keeps this independent of the `?st=`/Bearer
           // auth split below (see the request filter and withPlaybackToken's
           // note on why non-http `data:` URIs must never be touched).
-          const { keyId, key } = await fetchContentKey(videoId, token)
+          const { keyId, key } = await fetchContentKey(videoId, tokenRef.current)
           player.configure({ drm: { clearKeys: { [keyId]: key } } })
 
           await player.load(`${BASE_URL}/api/playback/${videoId}/master.m3u8`)
@@ -203,7 +237,7 @@ export const VideoPlayer = forwardRef(function VideoPlayer(
       playerRef.current = null
       player?.destroy()
     }
-  }, [videoId, token, refreshTracks])
+  }, [videoId, refreshTracks])
 
   function selectQuality(height) {
     const player = playerRef.current
