@@ -201,6 +201,45 @@ export const VideoPlayer = forwardRef(function VideoPlayer(
       player.addEventListener('adaptation', refreshTracks)
       player.addEventListener('variantchanged', refreshTracks)
 
+      /**
+       * Adds the generated WebVTT track (PRD F5) after load.
+       *
+       * Attached at runtime rather than declared in the HLS manifest, because
+       * transcription is decoupled from packaging: the manifest is written
+       * when PACKAGE finishes, minutes before a transcript exists — and
+       * sometimes before one that never arrives. A missing transcript is the
+       * normal case for a freshly uploaded video, so a 404 here is silent and
+       * simply leaves the player without a captions button.
+       */
+      async function attachSubtitles() {
+        const viewerToken = tokenRef.current
+        const url = viewerToken
+          ? `${BASE_URL}/api/videos/${videoId}/subtitles.vtt?st=${encodeURIComponent(viewerToken)}`
+          : `${BASE_URL}/api/videos/${videoId}/subtitles.vtt`
+
+        try {
+          // Probed with a real request first: addTextTrackAsync on a URL that
+          // 404s surfaces as a player-level error event, which would put the
+          // whole player into an error state over a missing nice-to-have.
+          const res = await fetch(url, {
+            headers: viewerToken ? {} : { Authorization: `Bearer ${getAccessToken()}` },
+          })
+          if (!res.ok || cancelled) return
+
+          // Shaka fetches this itself through its networking engine, so the
+          // request filter re-applies auth — the token is included above only
+          // so the probe matches what Shaka will actually get.
+          // Added, but deliberately not selected: selectTextTrack turns
+          // captions on, and a viewer who didn't ask for them shouldn't get
+          // them burned over the video. The track's presence is what makes
+          // the player's captions control appear, which is the actual
+          // requirement — captions available on demand.
+          await player.addTextTrackAsync(url, 'en', 'subtitle', 'text/vtt')
+        } catch {
+          // Captions are optional; never let them break playback.
+        }
+      }
+
       async function load() {
         try {
           // SAMPLE-AES/CMAF content plays through a real ClearKey EME session
@@ -217,6 +256,7 @@ export const VideoPlayer = forwardRef(function VideoPlayer(
 
           await player.load(`${BASE_URL}/api/playback/${videoId}/master.m3u8`)
           if (!cancelled) refreshTracks()
+          if (!cancelled) await attachSubtitles()
         } catch (err) {
           if (cancelled) return
           if ((isExpiredTokenError(err) || err.isAuthError) && (await recoverFromExpiredToken())) {
