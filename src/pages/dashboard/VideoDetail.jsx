@@ -8,9 +8,9 @@ import {
   Check,
   RotateCw,
   Lock,
-  Download,
   Plus,
   Trash2,
+  AlertTriangle,
   FastForward,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -32,15 +32,28 @@ import { useVideoStatus } from '@/hooks/useVideoStatus'
 import { phaseForStatus } from '@/lib/video-progress'
 import { videosApi } from '@/lib/api/videos'
 import { orgApi } from '@/lib/api/org'
-import { pipelineSteps } from '@/data/mock'
 import { formatDuration, formatBytes, formatDate } from '@/lib/utils'
 
-const RENDITIONS = [
-  { name: '1080p', bitrate: '5,000 kbps', size: 1_073_741_824, segments: 302 },
-  { name: '720p', bitrate: '2,800 kbps', size: 601_295_421, segments: 302 },
-  { name: '480p', bitrate: '1,400 kbps', size: 300_647_710, segments: 301 },
-  { name: '360p', bitrate: '800 kbps', size: 171_798_691, segments: 301 },
-]
+/** Queue names the pipeline uses, mapped to something a human wants to read. */
+const STEP_LABELS = {
+  'media-inspect':   'Inspect source',
+  'media-transcode': 'Transcode ladder',
+  'media-package':   'Encrypt & package',
+  'media-finalize':  'Finalize',
+  'media-speech':    'Transcribe',
+}
+
+const stepLabel = (step) => STEP_LABELS[step] ?? step
+
+/** ms → the coarsest unit that still reads precisely. */
+function formatElapsed(ms) {
+  if (ms === null || ms === undefined) return '—'
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
+  const minutes = Math.floor(ms / 60_000)
+  const seconds = Math.round((ms % 60_000) / 1000)
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`
+}
 
 function CopyField({ value, label }) {
   const [copied, setCopied] = useState(false)
@@ -76,8 +89,21 @@ function CopyField({ value, label }) {
 
 export default function VideoDetail() {
   const { id } = useParams()
-  const { video } = useVideoStatus(id)
+  const { video, renditions } = useVideoStatus(id)
   const queryClient = useQueryClient()
+
+  // Only fetched when the Processing tab is actually opened — the timeline
+  // grows with every retry, and is usually only wanted when something broke.
+  const [tab, setTab] = useState('overview')
+  const { data: pipelineData, isLoading: pipelineLoading } = useQuery({
+    queryKey: ['pipeline', id],
+    queryFn: () => videosApi.getPipeline(id),
+    enabled: tab === 'pipeline',
+    // A step still running should tick over; a finished pipeline shouldn't poll.
+    refetchInterval: (query) =>
+      query.state.data?.events?.some((e) => e.status === 'running') ? 3000 : false,
+  })
+  const pipelineEvents = pipelineData?.events ?? []
 
   const { data: transcriptData, isLoading: transcriptLoading } = useQuery({
     queryKey: ['transcript', id],
@@ -159,7 +185,7 @@ export default function VideoDetail() {
         }
       />
 
-      <Tabs defaultValue="overview">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsListUnderline>
           <TabsTriggerUnderline value="overview">Overview</TabsTriggerUnderline>
           <TabsTriggerUnderline value="renditions">Qualities</TabsTriggerUnderline>
@@ -231,30 +257,39 @@ export default function VideoDetail() {
 
         {/* ---------- Renditions ---------- */}
         <TabsContent value="renditions">
-          <Card className="divide-y divide-[var(--glass-border)]">
-            {RENDITIONS.map((r) => (
-              <div
-                key={r.name}
-                className="flex flex-wrap items-center gap-4 p-4 sm:px-5"
-              >
-                <Badge variant="mono" className="w-16 justify-center">
-                  {r.name}
-                </Badge>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{r.bitrate}</p>
-                  <p className="font-mono text-[11px] text-muted-foreground">
-                    {r.segments} segments · aes-128-cbc
+          {renditions.length === 0 ? (
+            <Card className="p-6">
+              <p className="text-sm text-muted-foreground">
+                {video.status === 'ready'
+                  ? 'No qualities were recorded for this video.'
+                  : 'Qualities appear here as the transcode ladder produces them.'}
+              </p>
+            </Card>
+          ) : (
+            <Card className="divide-y divide-[var(--glass-border)]">
+              {renditions.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-4 p-4 sm:px-5"
+                >
+                  <Badge variant="mono" className="w-16 justify-center">
+                    {r.name}
+                  </Badge>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {r.bitrate_kbps.toLocaleString()} kbps
+                    </p>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {r.width}×{r.height} · {r.codec} · cbcs
+                    </p>
+                  </div>
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {r.size_bytes ? formatBytes(r.size_bytes) : '—'}
                   </p>
                 </div>
-                <p className="font-mono text-xs text-muted-foreground">
-                  {formatBytes(r.size)}
-                </p>
-                <Button variant="ghost" size="icon" aria-label="Download manifest">
-                  <Download className="size-4" />
-                </Button>
-              </div>
-            ))}
-          </Card>
+              ))}
+            </Card>
+          )}
 
           <p className="mt-4 font-mono text-[11px] text-muted-foreground">
             Ladder chosen from the source resolution — nothing is upscaled.
@@ -270,35 +305,81 @@ export default function VideoDetail() {
                   Processing timeline
                 </h3>
                 <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                  Total 12m 00s · attempt 1 of 3
+                  {pipelineEvents.length === 0
+                    ? '—'
+                    : `Total ${formatElapsed(
+                        pipelineEvents.reduce((sum, e) => sum + (e.duration_ms ?? 0), 0),
+                      )} · ${pipelineEvents.length} step${pipelineEvents.length === 1 ? '' : 's'}`}
                 </p>
               </div>
-              <Button variant="outline" size="sm">
-                <RotateCw className="size-3.5" /> Retry failed step
-              </Button>
             </div>
 
-            <ol className="relative space-y-1">
-              <span className="absolute left-[15px] top-3 h-[calc(100%-24px)] w-px bg-border" />
-              {pipelineSteps.map((s) => (
-                <li key={s.name} className="relative flex gap-4 py-3">
-                  <span className="relative z-10 mt-0.5 grid size-8 shrink-0 place-items-center rounded-full border border-primary/35 bg-primary/10">
-                    <Check className="size-3.5 text-primary" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="text-sm font-medium">{s.name}</p>
-                      <p className="font-mono text-[11px] text-muted-foreground">
-                        {(s.ms / 1000).toFixed(1)}s
-                      </p>
-                    </div>
-                    <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                      {s.detail}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            {pipelineLoading ? (
+              <p className="text-sm text-muted-foreground">Loading timeline…</p>
+            ) : pipelineEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No processing steps recorded yet. Steps appear here as the pipeline runs.
+              </p>
+            ) : (
+              <ol className="relative space-y-1">
+                <span className="absolute left-[15px] top-3 h-[calc(100%-24px)] w-px bg-border" />
+                {pipelineEvents.map((e) => {
+                  const failed = e.status === 'failed'
+                  const running = e.status === 'running'
+                  return (
+                    <li key={e.id} className="relative flex gap-4 py-3">
+                      <span
+                        className={
+                          'relative z-10 mt-0.5 grid size-8 shrink-0 place-items-center rounded-full border ' +
+                          (failed
+                            ? 'border-destructive/40 bg-destructive/10'
+                            : running
+                              ? 'border-border bg-secondary'
+                              : 'border-primary/35 bg-primary/10')
+                        }
+                      >
+                        {failed ? (
+                          <AlertTriangle className="size-3.5 text-destructive" />
+                        ) : running ? (
+                          <RotateCw className="size-3.5 animate-spin text-muted-foreground" />
+                        ) : (
+                          <Check className="size-3.5 text-primary" />
+                        )}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <p className="text-sm font-medium">
+                            {stepLabel(e.step)}
+                            {e.attempt > 1 && (
+                              <span className="ml-2 font-mono text-[11px] text-muted-foreground">
+                                attempt {e.attempt}
+                              </span>
+                            )}
+                          </p>
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            {running ? 'running…' : formatElapsed(e.duration_ms)}
+                          </p>
+                        </div>
+                        {/* The error is shown verbatim on purpose: diagnosing a
+                            stuck video from this screen is the whole point of
+                            the tab, and a friendly paraphrase would lose the
+                            detail that makes it diagnosable. */}
+                        {failed && e.error && (
+                          <p className="mt-1 break-words font-mono text-[11px] text-destructive">
+                            {e.error}
+                          </p>
+                        )}
+                        {!failed && e.detail && (
+                          <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                            {e.detail}
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            )}
           </Card>
         </TabsContent>
 

@@ -35,6 +35,10 @@ export function useVideoStatus(videoId, { enabled = true } = {}) {
 
   return {
     video: query.data?.video ?? null,
+    // GET /api/videos/:id returns the encoded qualities alongside the video, so
+    // the Qualities tab renders from this same poll rather than issuing its own
+    // request — and it fills in live as the transcode ladder produces them.
+    renditions: query.data?.renditions ?? [],
     isPolling: query.isFetching,
     error: query.error,
   }

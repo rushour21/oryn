@@ -32,4 +32,7 @@ export const videosApi = {
   remove: (id) => api.delete(`/api/videos/${id}`),
 
   getTranscript: (id) => api.get(`/api/videos/${id}/transcript`),
+
+  /** Per-step processing history — powers the Processing tab. */
+  getPipeline: (id) => api.get(`/api/videos/${id}/pipeline`),
 }
