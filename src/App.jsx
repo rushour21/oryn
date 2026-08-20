@@ -5,6 +5,10 @@ import { queryClient } from '@/lib/query'
 import { AuthBootstrap } from '@/components/auth/AuthBootstrap'
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/auth/ProtectedRoute'
 import Landing from '@/pages/Landing'
+import { MarketingLayout } from '@/components/marketing/MarketingLayout'
+import Product from '@/pages/marketing/Product'
+import PricingPage from '@/pages/marketing/PricingPage'
+import Docs from '@/pages/marketing/Docs'
 import Login from '@/pages/auth/Login'
 import Signup from '@/pages/auth/Signup'
 import VerifyEmail from '@/pages/auth/VerifyEmail'
@@ -29,6 +33,15 @@ export default function App() {
           <AuthBootstrap>
             <Routes>
               <Route path="/" element={<Landing />} />
+
+              {/* Standalone marketing pages. Landing keeps its own layout —
+                  it has a full-bleed hero with an inset nav of its own, so
+                  wrapping it here would render two navbars. */}
+              <Route element={<MarketingLayout />}>
+                <Route path="/product" element={<Product />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/docs" element={<Docs />} />
+              </Route>
 
               {/* Signed-in users get bounced away from these */}
               <Route element={<PublicOnlyRoute />}>

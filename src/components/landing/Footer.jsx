@@ -5,29 +5,31 @@ import { Logo } from '@/components/brand/Logo'
 import { Button } from '@/components/ui/button'
 import { DEV_PLATFORM_HREF } from '@/components/landing/status'
 
+// `to` renders a router Link, `href` an anchor. The in-page anchors only
+// resolve on the landing page, so anything reachable from every page — which
+// is the whole footer — points at a real route instead.
 const COLUMNS = [
   {
     title: 'Product',
     links: [
-      { label: 'Secure delivery', href: '#security' },
-      { label: 'Ask AI', href: '#askai' },
-      { label: 'Pipeline', href: '#pipeline' },
-      { label: 'Pricing', href: '#pricing' },
+      { label: 'Overview', to: '/product' },
+      { label: 'Pricing', to: '/pricing' },
+      { label: 'Ask AI', to: '/product' },
+      { label: 'Pipeline', to: '/product' },
     ],
   },
   {
     title: 'Developers',
     links: [
-      { label: 'Embed a video', href: '#surfaces' },
-      { label: 'API and SDKs', href: '#surfaces' },
+      { label: 'API reference', to: '/docs' },
+      { label: 'Quickstart', to: '/docs' },
       { label: 'Request API access', href: DEV_PLATFORM_HREF },
     ],
   },
   {
     title: 'Company',
     links: [
-      { label: 'Two ways in', href: '#surfaces' },
-      { label: 'Questions', href: '#faq' },
+      { label: 'Questions', to: '/pricing' },
       { label: 'Contact', href: 'mailto:hello@oryn.com' },
     ],
   },
@@ -92,12 +94,15 @@ export function Footer() {
                 <ul className="space-y-3">
                   {col.links.map((l) => (
                     <li key={l.label}>
-                      <a
-                        href={l.href}
-                        className="text-sm transition-colors hover:text-primary"
-                      >
-                        {l.label}
-                      </a>
+                      {l.to ? (
+                        <Link to={l.to} className="text-sm transition-colors hover:text-primary">
+                          {l.label}
+                        </Link>
+                      ) : (
+                        <a href={l.href} className="text-sm transition-colors hover:text-primary">
+                          {l.label}
+                        </a>
+                      )}
                     </li>
                   ))}
                 </ul>

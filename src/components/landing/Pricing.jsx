@@ -63,23 +63,32 @@ const PLANS = [
   },
 ]
 
-export function Pricing() {
+/**
+ * `showHeading` exists because this section is used in two places that need
+ * different framing: on the landing page it is section seven of a numbered
+ * sequence and needs its own heading, while /pricing gives the page a heading
+ * already — rendering both produced the same sentence twice, one above the
+ * other, and a "{ 07 }" label on a page with no sections one through six.
+ */
+export function Pricing({ showHeading = true }) {
   return (
     <section id="pricing" className="relative z-10 py-24">
       <div className="wrap">
-        <div data-reveal className="mb-14 max-w-2xl">
-          <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.14em] text-primary">
-            {'{ 07 }'} Pricing
-          </p>
-          <h2 className="font-display text-[clamp(1.9rem,3.6vw,2.75rem)] font-medium leading-[1.14] tracking-tight">
-            Priced on what you actually use
-          </h2>
-          <p className="mt-5 text-[17px] leading-relaxed text-muted-foreground">
-            Five metered units: storage, encoding minutes, transcription minutes,
-            delivery, and AI questions. No per-seat pricing, no surprise bandwidth
-            invoice.
-          </p>
-        </div>
+        {showHeading && (
+          <div data-reveal className="mb-14 max-w-2xl">
+            <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.14em] text-primary">
+              {'{ 07 }'} Pricing
+            </p>
+            <h2 className="font-display text-[clamp(1.9rem,3.6vw,2.75rem)] font-medium leading-[1.14] tracking-tight">
+              Priced on what you actually use
+            </h2>
+            <p className="mt-5 text-[17px] leading-relaxed text-muted-foreground">
+              Five metered units: storage, encoding minutes, transcription minutes,
+              delivery, and AI questions. No per-seat pricing, no surprise bandwidth
+              invoice.
+            </p>
+          </div>
+        )}
 
         <div data-reveal-group className="grid gap-5 lg:grid-cols-3">
           {PLANS.map((p) => (

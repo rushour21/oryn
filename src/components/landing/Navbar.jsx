@@ -4,12 +4,15 @@ import { Menu, X, ArrowRight } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
 import { Button } from '@/components/ui/button'
 
+// `to` is a real route; `href` stays an in-page anchor. Both appear here
+// because the landing page genuinely has both: sections a visitor can jump to
+// while scrolling, and pages that deserve their own URL.
 const LINKS = [
-  { label: 'Product', href: '#product' },
+  { label: 'Product', to: '/product' },
   { label: 'Pipeline', href: '#pipeline' },
   { label: 'Ask AI', href: '#askai' },
-  { label: 'Developers', href: '#surfaces' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Docs', to: '/docs' },
+  { label: 'Pricing', to: '/pricing' },
 ]
 
 
@@ -41,13 +44,23 @@ export function Navbar() {
         {/* centered links */}
         <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-9 lg:flex">
           {LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="text-[15px] font-medium text-white/85 transition-colors hover:text-white"
-            >
-              {l.label}
-            </a>
+            l.to ? (
+              <Link
+                key={l.to}
+                to={l.to}
+                className="text-[15px] font-medium text-white/85 transition-colors hover:text-white"
+              >
+                {l.label}
+              </Link>
+            ) : (
+              <a
+                key={l.href}
+                href={l.href}
+                className="text-[15px] font-medium text-white/85 transition-colors hover:text-white"
+              >
+                {l.label}
+              </a>
+            )
           ))}
         </div>
 
@@ -76,16 +89,18 @@ export function Navbar() {
 
       {open && (
         <div className="glass-pill absolute inset-x-0 top-full z-50 mt-3 rounded-3xl p-3 lg:hidden">
-          {LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setOpen(false)}
-              className="block rounded-2xl px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white"
-            >
-              {l.label}
-            </a>
-          ))}
+          {LINKS.map((l) => {
+            const cls = 'block rounded-2xl px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white'
+            return l.to ? (
+              <Link key={l.to} to={l.to} onClick={() => setOpen(false)} className={cls}>
+                {l.label}
+              </Link>
+            ) : (
+              <a key={l.href} href={l.href} onClick={() => setOpen(false)} className={cls}>
+                {l.label}
+              </a>
+            )
+          })}
           <Button asChild className="mt-2 w-full rounded-full">
             <Link to="/signup">Start free</Link>
           </Button>
