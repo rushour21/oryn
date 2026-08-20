@@ -238,7 +238,26 @@ curl -X POST ${API}/v1/uploads \\
             <p className="mt-6 font-medium text-foreground">If no — upload from the browser</p>
             <p>
               Your server asks for an upload, then your frontend sends the file straight to
-              our storage. The bytes never pass through your server.
+              our storage. The bytes never pass through your server. This is the one case
+              with a package, because chunking a multi-gigabyte file and resuming it after a
+              dropped connection is genuinely awkward to hand-roll:
+            </p>
+
+            <Code lang="js">{`
+// In the browser
+import { uploadVideo } from '@oryn/upload'
+
+// \`upload\` is the object your server got back from POST /v1/uploads
+await uploadVideo(file, {
+  upload,
+  onProgress: (percent) => setProgress(percent),
+})
+`}</Code>
+
+            <p>
+              It carries a token scoped to that single upload — it cannot list your videos,
+              delete anything, or touch another upload, which is what makes it safe to hand
+              to a page. Your secret key stays on your server.
             </p>
 
             <Code>{`

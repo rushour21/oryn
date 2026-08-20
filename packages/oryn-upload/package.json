@@ -1,0 +1,22 @@
+{
+  "name": "@oryn/upload",
+  "version": "0.1.0",
+  "description": "Resumable chunked video upload for the browser. The only ORYN package — everything else is a plain HTTP call.",
+  "type": "module",
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": ["src", "README.md"],
+  "sideEffects": false,
+  "keywords": ["oryn", "video", "upload", "resumable", "multipart"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "browser": true,
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
