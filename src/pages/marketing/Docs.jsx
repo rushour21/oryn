@@ -295,13 +295,36 @@ curl -X POST ${API}/v1/playback-tokens \\
             </p>
 
             <p>
-              Tokens last five minutes by default and the player refreshes them on its own,
-              so a long lecture needs no special handling. Pass the token to the embed:
+              Pass the token to the embed and it plays for that viewer only:
             </p>
 
             <Code lang="html">{`
 <iframe src="https://embed.oryn.com/embed/VIDEO_ID?token=eyJ..."></iframe>
 `}</Code>
+
+            <p className="mt-6 font-medium text-foreground">Videos longer than the token</p>
+            <p>
+              Tokens last at most five minutes, so any real lecture outlives one. We cannot
+              issue you a replacement from the browser — that needs your secret key, which
+              never leaves your server — so give the player somewhere on your side to ask:
+            </p>
+
+            <Code lang="html">{`
+<iframe src="https://embed.oryn.com/embed/VIDEO_ID?token=eyJ...&refresh_url=https://your-app.com/oryn-token"></iframe>
+`}</Code>
+
+            <p>
+              The player calls that URL before the current token expires and expects{' '}
+              <code className="font-mono text-[13px] text-foreground">{'{ "token": "..." }'}</code>{' '}
+              back — mint it exactly as above, after re-checking the viewer still has access.
+              It is called without cookies, so authenticate it however suits you.
+            </p>
+
+            <p className="rounded-lg border border-border bg-secondary/30 p-4 text-sm">
+              Without <code className="font-mono text-[12px] text-foreground">refresh_url</code>,
+              playback stops when the token expires. That is fine for a short clip and will
+              interrupt a lecture.
+            </p>
           </Section>
 
           <Section id="ask" title="Ask AI">
