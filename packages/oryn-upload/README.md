@@ -1,4 +1,4 @@
-# @oryn/upload
+# oryn-upload
 
 Resumable chunked video upload for the browser.
 
@@ -12,7 +12,7 @@ Zero dependencies. Native `fetch` only.
 ## Install
 
 ```bash
-npm install @oryn/upload
+npm install oryn-upload
 ```
 
 ## Use
@@ -39,7 +39,7 @@ return data.upload            // send this object to the browser
 **2. In the browser** — hand that object to the package:
 
 ```js
-import { uploadVideo } from '@oryn/upload'
+import { uploadVideo } from 'oryn-upload'
 
 const upload = await fetch('/my-api/create-oryn-upload').then((r) => r.json())
 

@@ -1,5 +1,5 @@
 {
-  "name": "@oryn/upload",
+  "name": "oryn-upload",
   "version": "0.1.0",
   "description": "Resumable chunked video upload for the browser. The only ORYN package — everything else is a plain HTTP call.",
   "type": "module",
@@ -8,14 +8,23 @@
   "exports": {
     ".": "./src/index.js"
   },
-  "files": ["src", "README.md"],
+  "files": ["src", "README.md", "LICENSE"],
   "sideEffects": false,
   "keywords": ["oryn", "video", "upload", "resumable", "multipart"],
   "license": "MIT",
+  "author": "ORYN",
+  "homepage": "https://github.com/rushour21/oryn/tree/main/orynClient/packages/oryn-upload#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rushour21/oryn.git",
+    "directory": "orynClient/packages/oryn-upload"
+  },
+  "bugs": {
+    "url": "https://github.com/rushour21/oryn/issues"
+  },
   "engines": {
     "node": ">=18"
   },
-  "browser": true,
   "scripts": {
     "test": "node --test test/*.test.js"
   }

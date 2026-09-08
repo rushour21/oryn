@@ -245,7 +245,7 @@ curl -X POST ${API}/v1/uploads \\
 
             <Code lang="js">{`
 // In the browser
-import { uploadVideo } from '@oryn/upload'
+import { uploadVideo } from 'oryn-upload'
 
 // \`upload\` is the object your server got back from POST /v1/uploads
 await uploadVideo(file, {

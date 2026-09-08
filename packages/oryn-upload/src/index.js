@@ -1,5 +1,5 @@
 /**
- * @oryn/upload — resumable chunked video upload for the browser (PRD F18).
+ * oryn-upload — resumable chunked video upload for the browser (PRD F18).
  *
  * This is the only package ORYN publishes, and it exists because exactly one
  * part of integrating is genuinely hard to hand-roll: getting a multi-gigabyte
@@ -13,7 +13,7 @@
  *
  * Usage:
  *
- *   import { uploadVideo } from '@oryn/upload'
+ *   import { uploadVideo } from 'oryn-upload'
  *
  *   // Your server calls POST /v1/uploads with its secret key and returns
  *   // the `upload` object from the response to your page.
