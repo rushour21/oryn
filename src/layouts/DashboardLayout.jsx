@@ -12,6 +12,7 @@ import {
   LogOut,
   ExternalLink,
   CreditCard,
+  KeyRound,
   Command,
   ChevronsUpDown,
   ChevronRight,
@@ -41,6 +42,7 @@ const NAV = [
   { to: '/dashboard/videos', label: 'Library', icon: Video },
   { to: '/dashboard/upload', label: 'Upload', icon: UploadCloud },
   { to: '/dashboard/usage', label: 'Usage', icon: CreditCard },
+  { to: '/dashboard/api-keys', label: 'API keys', icon: KeyRound },
   { to: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 
