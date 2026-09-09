@@ -27,6 +27,7 @@ const SECTIONS = [
   { id: 'playback', label: 'Play a video' },
   { id: 'ask', label: 'Ask AI' },
   { id: 'videos', label: 'Manage videos' },
+  { id: 'webhooks', label: 'Webhooks' },
   { id: 'errors', label: 'Errors & conventions' },
 ]
 
@@ -143,7 +144,7 @@ curl -X POST ${API}/v1/uploads \\
 
 # → { "data": { "video_id": "...", "status": "processing", "mode": "pull" } }
 
-# 2. Poll until it is ready (processing takes a few minutes)
+# 2. Poll until it is ready (or register a webhook and skip the polling)
 curl ${API}/v1/videos/VIDEO_ID -H "Authorization: Bearer sk_your_key"
 
 # → { "data": { "status": "ready", "duration_seconds": 2400, ... } }
@@ -398,6 +399,131 @@ curl "${API}/v1/videos?limit=20" -H "Authorization: Bearer sk_your_key"
             <p>
               Deleting removes the source, every rendition, and the transcript. It cannot be
               undone.
+            </p>
+          </Section>
+
+          <Section id="webhooks" title="Webhooks">
+            <p>
+              Processing a 40-minute lecture takes minutes, not milliseconds. Rather than
+              polling <code className="font-mono text-[13px] text-foreground">GET /v1/videos/:id</code>{' '}
+              until the status changes, register an endpoint and we will POST to it. Add one
+              in the dashboard under Webhooks; you will be shown a signing secret once.
+            </p>
+
+            <h3 className="mt-6 mb-2 font-display text-base font-semibold">Events</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <tbody className="divide-y divide-border">
+                  {[
+                    ['video.uploaded', 'The file reached our storage. Nothing has been done to it yet.'],
+                    ['video.processing', 'A worker picked it up. This is when the clock starts.'],
+                    ['video.ready', 'Playable. The event most integrations act on.'],
+                    ['video.failed', 'Sent once, after our own retries are exhausted — not on every transient error.'],
+                    ['transcript.ready', 'Captions and Ask AI are live for this video. Arrives independently of video.ready, and may arrive after it.'],
+                  ].map(([name, description]) => (
+                    <tr key={name}>
+                      <td className="py-3 pr-4 align-top font-mono text-[13px] text-foreground">{name}</td>
+                      <td className="py-3 text-muted-foreground">{description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3 className="mt-6 mb-2 font-display text-base font-semibold">The request we send</h3>
+            <Code lang="http">{`
+POST /your/endpoint HTTP/1.1
+Content-Type: application/json
+User-Agent: Oryn-Webhooks/1
+Oryn-Signature: t=1757340000,v1=5f2b...c41d
+Oryn-Event-Id: evt_9f2a1b4c7d8e0f3a5b6c9d2e4f7a8b1c
+Oryn-Event-Type: video.ready
+Oryn-Delivery-Attempt: 1
+
+{
+  "id": "evt_9f2a1b4c7d8e0f3a5b6c9d2e4f7a8b1c",
+  "type": "video.ready",
+  "created_at": "2026-09-08T14:20:00.000Z",
+  "data": {
+    "video": {
+      "id": "vid_...",
+      "title": "Lecture 4 — Recursion",
+      "status": "ready",
+      "duration_seconds": 2412,
+      "width": 1920,
+      "height": 1080,
+      "size_bytes": 812739584,
+      "created_at": "2026-09-08T14:02:11.000Z",
+      "processed_at": "2026-09-08T14:19:58.000Z"
+    }
+  }
+}
+`}</Code>
+
+            <h3 className="mt-6 mb-2 font-display text-base font-semibold">Verify every delivery</h3>
+            <p>
+              Anyone can POST to your URL. The signature is what tells you a request came
+              from us, so check it before you trust the body — and compare digests with a
+              timing-safe function, not{' '}
+              <code className="font-mono text-[13px] text-foreground">===</code>.
+            </p>
+
+            <Code lang="node">{`
+const crypto = require('node:crypto')
+
+// Verify against the RAW body, before any JSON parsing. Re-serialising an
+// object changes the bytes (key order, whitespace) and the signature fails.
+app.post('/webhooks/oryn',
+  express.raw({ type: 'application/json' }),
+  (req, res) => {
+    const parts = Object.fromEntries(
+      req.get('Oryn-Signature').split(',').map((p) => p.split('=')),
+    )
+
+    // Reject anything older than five minutes: without this, a delivery
+    // someone captured stays replayable forever.
+    if (Math.abs(Date.now() / 1000 - Number(parts.t)) > 300) {
+      return res.status(400).send('stale')
+    }
+
+    const expected = crypto
+      .createHmac('sha256', process.env.ORYN_WEBHOOK_SECRET)
+      .update(parts.t + '.' + req.body)
+      .digest()
+
+    const given = Buffer.from(parts.v1, 'hex')
+    if (given.length !== expected.length ||
+        !crypto.timingSafeEqual(expected, given)) {
+      return res.status(400).send('bad signature')
+    }
+
+    const event = JSON.parse(req.body)
+
+    // Answer immediately, work afterwards — see Retries below.
+    res.sendStatus(200)
+    handle(event).catch(console.error)
+  })
+`}</Code>
+
+            <h3 className="mt-6 mb-2 font-display text-base font-semibold">Retries</h3>
+            <p>
+              Any 2xx counts as delivered. Anything else — including a timeout after 10
+              seconds — is retried after{' '}
+              <span className="font-medium text-foreground">1 minute, 5 minutes, 30 minutes,
+              2 hours and 6 hours</span>, then given up on. Reply as soon as you have stored
+              the event and do the real work afterwards: a handler that transcodes before
+              responding will time out and be retried while it is still working.
+            </p>
+            <p>
+              Retries mean the same event can arrive twice, so make your handler idempotent —{' '}
+              <code className="font-mono text-[13px] text-foreground">Oryn-Event-Id</code> is
+              stable across every attempt and is the right key to deduplicate on. Reply{' '}
+              <code className="font-mono text-[13px] text-foreground">410 Gone</code> to stop
+              retries for a delivery you will never accept.
+            </p>
+            <p>
+              Endpoints must be public HTTPS URLs. Private and link-local addresses are
+              refused, and redirects are never followed.
             </p>
           </Section>
 

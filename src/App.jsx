@@ -25,6 +25,7 @@ import Upload from '@/pages/dashboard/Upload'
 import Usage from '@/pages/dashboard/Usage'
 import Settings from '@/pages/dashboard/Settings'
 import ApiKeys from '@/pages/dashboard/ApiKeys'
+import Webhooks from '@/pages/dashboard/Webhooks'
 
 export default function App() {
   return (
@@ -73,6 +74,7 @@ export default function App() {
                   <Route path="usage" element={<Usage />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="api-keys" element={<ApiKeys />} />
+                  <Route path="webhooks" element={<Webhooks />} />
 
                   {/* Uploading additionally needs a verified email (PRD F1) */}
                   <Route element={<ProtectedRoute requireVerified />}>

@@ -13,6 +13,7 @@ import {
   ExternalLink,
   CreditCard,
   KeyRound,
+  Webhook,
   Command,
   ChevronsUpDown,
   ChevronRight,
@@ -43,6 +44,7 @@ const NAV = [
   { to: '/dashboard/upload', label: 'Upload', icon: UploadCloud },
   { to: '/dashboard/usage', label: 'Usage', icon: CreditCard },
   { to: '/dashboard/api-keys', label: 'API keys', icon: KeyRound },
+  { to: '/dashboard/webhooks', label: 'Webhooks', icon: Webhook },
   { to: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 
